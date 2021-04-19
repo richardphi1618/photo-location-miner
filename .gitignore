@@ -1,0 +1,10 @@
+.vscode/*
+*/.vscode/*
+*/tests/*
+test.py
+*/__pycache__/*
+__pycache__/*
+
+*.pdf
+*.csv
+
