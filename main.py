@@ -2,18 +2,19 @@ import exifread as ef
 import glob
 import csv
 import os
-import re
 
 # Written by Richard Blanchette 090419
 # "barrowed" from https://stackoverflow.com/questions/19804768/interpreting-gps-info-of-exif-data-from-photo-in-python
 # who "barrowed" from
 # https://gist.github.com/snakeye/fdc372dbf11370fe29eb
 
-#test
 
 def _convert_to_degress(value):
     """
     Helper function to convert the GPS coordinates stored in the EXIF to degress in float format
+    :param value:
+    :type value: exifread.utils.Ratio
+    :rtype: float
     """
     d = float(value.values[0].num) / float(value.values[0].den)
     m = float(value.values[1].num) / float(value.values[1].den)
@@ -24,17 +25,17 @@ def _convert_to_degress(value):
 
 def getGPS(filepath):
     '''
-    returns gps data if present otherwise returns empty dictionary
+    returns gps data if present other wise returns empty dictionary
     '''
     with open(filepath, 'rb') as f:
         tags = ef.process_file(f)
 
         if tags == {}:
-            print('Bad File: ', filepath)
+            print ('Bad File: ', filepath)
             DateTime = "None"
             latitude = "None"
             longitude = "None"
-            print("Processed a total of", count, "pictures")
+            print("Processed a total of" , count , "pictures")
             input("Press Enter to Close....")
             quit()
 
@@ -43,8 +44,6 @@ def getGPS(filepath):
         latitude_ref = tags.get('GPS GPSLatitudeRef')
         longitude = tags.get('GPS GPSLongitude')
         longitude_ref = tags.get('GPS GPSLongitudeRef')
-        UserComment = tags.get('EXIF UserComment')
-
         if latitude:
             lat_value = _convert_to_degress(latitude)
             if latitude_ref.values != 'N':
@@ -57,25 +56,23 @@ def getGPS(filepath):
                 lon_value = -lon_value
         else:
             return {}
-        return DateTime, lat_value, lon_value, UserComment
+        return DateTime, lat_value, lon_value
     return {}
 
 # This is to build the CSV and assign Headers
 with open('imagelog.csv', mode='w', newline='') as imagelog:
     fieldnames = ['Filepath', 'DateTimeOriginal',
-                  'GPSLatitude', 'GPSLongitude', 'UserComment']
+                  'GPSLatitude', 'GPSLongitude']
     imagelog = csv.DictWriter(imagelog, fieldnames=fieldnames)
 
     imagelog.writeheader()
 
-# Reset Counter
+#Reset Counter
 count = 0
 
 print("Folder Name?")
 FolderName = input()
 
-
-#check if folder exists
 if (os.path.isdir(FolderName)):
     print("Directory exist")
 else:
@@ -83,32 +80,48 @@ else:
     input("Press Enter to Close....")
     quit()
 
+# Initialize counters
+file_count = 0
+file_types = {}
 
-for filepath in glob.iglob(FolderName+'/*.jpg'):
-    Time, Lat, Long, UserComm = getGPS(filepath)
-    '''
+# Iterate over files in the directory
+for file_path in glob.glob(FolderName + '/*'):
+    # Increment file count
+    file_count += 1
+
+    # Get file extension
+    file_extension = os.path.splitext(file_path)[1]
+
+    # Update file types dictionary
+    if file_extension in file_types:
+        file_types[file_extension] += 1
+    else:
+        file_types[file_extension] = 1
+
+# Print the results
+print("Number of files:", file_count)
+print("File types:")
+for file_extension, count in file_types.items():
+    print(file_extension, ":", count)
+
+path = glob.glob(os.path.join(FolderName, '*.jpg')) or glob.glob(os.path.join(FolderName, '*.JPG'))
+
+# Reset Counter
+processed_count = 0
+for filepath in path:
+    print(filepath)
+
+    Time, Lat, Long = getGPS(filepath)
     print(Time)
     print(Lat)
     print(Long)
-    '''
-
-    # snip text from user comment
-    print(filepath)
-    UserComm_str = str(UserComm)
-    UserComm_Desc = re.search('DESCRIPTION: (.*) WATERMARK:', UserComm_str)
-    # print(UserComm_Desc.group(1))
-
-    # store data in spreadsheet
 
     with open('imagelog.csv', mode='a', newline='') as imagelog:
-        fieldnames = ['Filepath', 'DateTimeOriginal',
-                      'GPSLatitude', 'GPSLongitude', 'UserComment']
+        fieldnames = ['Filepath', 'DateTimeOriginal', 'GPSLatitude', 'GPSLongitude']
         imagelog = csv.DictWriter(imagelog, fieldnames=fieldnames)
-        imagelog.writerow({'Filepath': filepath, 'DateTimeOriginal': Time,
-                           'GPSLatitude': Lat, 'GPSLongitude': Long, 'UserComment': UserComm_Desc.group(1)})
+        imagelog.writerow({'Filepath': filepath, 'DateTimeOriginal': Time, 'GPSLatitude': Lat, 'GPSLongitude': Long})
+        processed_count += 1
 
-    # count number of files
-        count += 1
-
-print("Processed ", count, " of pictures")
+print(f"Processed: {processed_count}")
 input("Press Enter to Close....")
+quit()
